@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "author": "Smart Room Monitoring & Automation (IoT Assignment 3, Option 1)",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+
+    { "type": "board-ssd1306", "id": "oled1", "top": -120, "left": 0, "attrs": { "i2cAddress": "0x3c" } },
+
+    { "type": "wokwi-photoresistor-sensor", "id": "ldr1", "top": 10, "left": -240, "attrs": { "lux": "500" } },
+    { "type": "wokwi-buzzer", "id": "bz1", "top": 70, "left": -150, "rotate": 270, "attrs": { "volume": "0.2" } },
+    { "type": "wokwi-pushbutton", "id": "btnMode", "top": 150, "left": -150, "attrs": { "color": "green", "label": "AUTO/MAN" } },
+
+    { "type": "wokwi-relay-module", "id": "relayFan", "top": 20, "left": 200, "attrs": {} },
+    { "type": "wokwi-relay-module", "id": "relayLight", "top": 100, "left": 200, "attrs": {} },
+    { "type": "wokwi-led", "id": "ledFan", "top": -30, "left": 360, "attrs": { "color": "blue", "label": "FAN" } },
+    { "type": "wokwi-led", "id": "ledLight", "top": 75, "left": 360, "attrs": { "color": "yellow", "label": "LIGHT" } },
+    { "type": "wokwi-resistor", "id": "rFan", "top": 45, "left": 395, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "rLight", "top": 150, "left": 395, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-dht22", "id": "dht1", "top": 200, "left": 230, "rotate": 90, "attrs": { "temperature": "26", "humidity": "55" } },
+
+    { "type": "wokwi-gnd", "id": "g1", "top": 240, "left": -60, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "g2", "top": 245, "left": 170, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "g3", "top": 55, "left": 465, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "g4", "top": 160, "left": 465, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "g5", "top": 50, "left": -45, "attrs": {} },
+    { "type": "wokwi-gnd", "id": "g6", "top": -120, "left": -20, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+
+    [ "esp:GND.2", "g1:GND", "black", [] ],
+    [ "esp:GND.1", "g2:GND", "black", [] ],
+
+    [ "oled1:SCL", "esp:D22", "purple", [ "v-10", "h67", "*", "h19" ] ],
+    [ "oled1:SDA", "esp:D21", "blue", [ "v-14", "h66", "*", "h26" ] ],
+    [ "oled1:VCC", "esp:3V3", "red", [ "v-18", "h67", "*", "h11" ] ],
+    [ "oled1:GND", "g6:GND", "black", [ "v-6" ] ],
+
+    [ "ldr1:AO", "esp:D34", "orange", [] ],
+    [ "ldr1:VCC", "esp:3V3", "red", [ "h10", "v-36", "*", "v-168", "h11" ] ],
+    [ "ldr1:GND", "g5:GND", "black", [] ],
+
+    [ "bz1:2", "esp:D25", "magenta", [] ],
+    [ "bz1:1", "g1:GND", "black", [] ],
+
+    [ "btnMode:1.r", "esp:D14", "green", [] ],
+    [ "btnMode:2.r", "g1:GND", "black", [] ],
+
+    [ "relayFan:IN", "esp:D19", "cyan", [] ],
+    [ "relayFan:VCC", "esp:VIN", "red", [ "h-12", "v183", "*", "v64", "h-12" ] ],
+    [ "relayFan:GND", "g2:GND", "black", [ "h-20" ] ],
+    [ "relayFan:COM", "esp:3V3", "red", [ "h12", "v147", "*", "h11" ] ],
+    [ "relayFan:NO", "ledFan:A", "cyan", [] ],
+    [ "ledFan:C", "rFan:1", "black", [] ],
+    [ "rFan:2", "g3:GND", "black", [] ],
+
+    [ "relayLight:IN", "esp:D18", "gold", [] ],
+    [ "relayLight:VCC", "esp:VIN", "red", [ "h-12", "v103", "*", "v64", "h-12" ] ],
+    [ "relayLight:GND", "g2:GND", "black", [ "h-20" ] ],
+    [ "relayLight:COM", "esp:3V3", "red", [ "h12", "v67", "*", "h11" ] ],
+    [ "relayLight:NO", "ledLight:A", "gold", [] ],
+    [ "ledLight:C", "rLight:1", "black", [] ],
+    [ "rLight:2", "g4:GND", "black", [] ],
+
+    [ "dht1:SDA", "esp:D15", "green", [] ],
+    [ "dht1:VCC", "esp:3V3", "red", [] ],
+    [ "dht1:GND", "g2:GND", "black", [] ]
+  ],
+  "dependencies": {}
+}

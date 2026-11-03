@@ -1,0 +1,9 @@
+# Wokwi Library List
+# See https://docs.wokwi.com/guides/libraries
+
+DHT sensor library
+Adafruit Unified Sensor
+PubSubClient
+ArduinoJson
+Adafruit GFX Library
+Adafruit SSD1306
