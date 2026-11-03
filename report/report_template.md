@@ -34,7 +34,7 @@ Fans and lights in rooms are often left running when they are not needed, or swi
 
 The ESP32 samples the sensors, applies the decision rules locally and drives the actuators, so the room is still controlled when the network is down. Every 2 s it publishes a JSON telemetry message to the MQTT broker. The browser dashboard subscribes to the same topics over secure WebSockets and publishes commands back to the device.
 
-![System architecture](report/figures/architecture.png)
+![System architecture](report/figures/architecture.drawio.png)
 
 ## 2.2 Hardware and Circuit
 
