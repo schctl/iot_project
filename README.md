@@ -1,13 +1,14 @@
 # IoT Project: Smart Room Monitoring and Automation
 
-Internet of Things, Assignment 3 (Option 1). An ESP32 reads a DHT22 (temperature, humidity) and an LDR (light). It switches a
-fan and a light through relays using thresholds with hysteresis, raises a buzzer and an MQTT alert at critical temperature,
-and publishes everything over Wi-Fi/MQTT to a browser dashboard that can also control the device.
+Internet of Things, Assignment 3 (Option 1).
 
-| Path | Contents |
+An ESP32 measures temperature, humidity and light. It turns a fan on when the room is hot and a light on when it's
+dark, and beeps an alarm if it gets far too hot. All readings go to a web dashboard, where you can also switch the
+fan and light by hand.
+
+| Folder | What's inside |
 |---|---|
-| [`smart-room-wokwi/`](smart-room-wokwi/) | Wokwi project (`sketch.ino`, `diagram.json`, `libraries.txt`), `dashboard.html`, run instructions |
-| [`report/`](report/) | Report ([`report.pdf`](report/report.pdf)), its Markdown source, figures and build scripts |
+| [`smart-room-wokwi/`](smart-room-wokwi/) | The Wokwi project, the dashboard, and how to run them |
+| [`report/`](report/) | The report ([`report.pdf`](report/report.pdf)) and its source files |
 
-Quick start: open <https://wokwi.com/projects/new/esp32>, paste the three files from `smart-room-wokwi/`, press Start,
-then open `smart-room-wokwi/dashboard.html` in a browser. Full steps: [`smart-room-wokwi/README.md`](smart-room-wokwi/README.md).
+To try it, follow the steps in [`smart-room-wokwi/README.md`](smart-room-wokwi/README.md).

@@ -3,8 +3,8 @@ name: –
 regno: –
 section: –
 date: 03/11/2026
-title: IoT-Based Smart Room Monitoring and Automation
-subtitle: Internet of Things, Assignment 3 (Option 1): Design and Real-Time Implementation of an IoT-Based System
+title: IOT Assignment
+subtitle: IoT-Based Smart Room Monitoring and Automation (Option 1)
 aim: To design and implement an ESP32-based IoT system that monitors room temperature, humidity and light level, publishes the data over Wi-Fi using MQTT to a web dashboard, and automatically controls a fan and a light (with an alarm for critical temperature) using threshold-based decisions.
 ---
 

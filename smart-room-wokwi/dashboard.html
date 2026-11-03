@@ -3,278 +3,301 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Smart Room Dashboard</title>
-<!-- MQTT over WebSockets + charting, pinned versions -->
+<title>Smart Room</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
+  /* Flat surfaces separated by tone steps; one accent; system type. */
   :root {
-    --bg: #f4f5f7;
+    --bg: #f2f2f4;
     --surface: #ffffff;
-    --surface-2: #f0f1f4;
-    --border: #e1e3e8;
-    --text: #1b1d22;
-    --muted: #6b7180;
-    --accent: #2f6fde;
-    --temp: #e0583b;
-    --hum: #2f8fd8;
-    --lux: #c99712;
-    --ok: #1f9d5c;
-    --off: #9aa0ab;
-    --danger: #d23b3b;
-    --danger-bg: #fdecec;
-    --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
+    --surface-2: #e9e9ee;
+    --border: #e4e4e9;          /* chart axis only */
+    --text: #111113;
+    --muted: #5f6068;
+    --accent: #0062d6;
+    --temp: #e5482b;
+    --hum: #1b7fd6;
+    --lux: #b8860b;
+    --ok: #1f9e55;
+    --off: #b9bac2;
+    --danger: #d4281d;
+    --on-danger: #ffffff;
+    --press: cubic-bezier(.2, .8, .2, 1);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #111317; --surface: #1a1d23; --surface-2: #22262e; --border: #2c313a;
-      --text: #e8eaee; --muted: #9097a4; --accent: #5b8ff0;
-      --temp: #f0775c; --hum: #5aaaf0; --lux: #e3b53a;
-      --ok: #3cc47c; --off: #5d636e; --danger: #f06262; --danger-bg: #3a1e1f;
-      --shadow: none;
+      --bg: #000000; --surface: #161618; --surface-2: #232326; --border: #2a2a2e;
+      --text: #f4f4f6; --muted: #a0a1a8; --accent: #3d8bff;
+      --temp: #ff6a4d; --hum: #4aa8ff; --lux: #f0b93a;
+      --ok: #34c467; --off: #48494f; --danger: #e5352a;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #111317; --surface: #1a1d23; --surface-2: #22262e; --border: #2c313a;
-    --text: #e8eaee; --muted: #9097a4; --accent: #5b8ff0;
-    --temp: #f0775c; --hum: #5aaaf0; --lux: #e3b53a;
-    --ok: #3cc47c; --off: #5d636e; --danger: #f06262; --danger-bg: #3a1e1f;
-    --shadow: none;
+    --bg: #000000; --surface: #161618; --surface-2: #232326; --border: #2a2a2e;
+    --text: #f4f4f6; --muted: #a0a1a8; --accent: #3d8bff;
+    --temp: #ff6a4d; --hum: #4aa8ff; --lux: #f0b93a;
+    --ok: #34c467; --off: #48494f; --danger: #e5352a;
   }
 
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 16px/1.5 system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 24px 56px; }
 
-  header {
-    display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between;
-    margin-bottom: 18px;
-  }
-  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
-  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
-  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
-  .pill {
-    display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px;
-    border-radius: 999px; background: var(--surface); border: 1px solid var(--border);
-    font-size: 13px; white-space: nowrap;
-  }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--off); }
+  /* ---------- top bar ---------- */
+  header { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: baseline; justify-content: space-between; margin-bottom: 28px; }
+  h1 { font-size: clamp(30px, 4.2vw, 52px); line-height: 1; letter-spacing: -0.035em; margin: 0; font-weight: 700; }
+  .status { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 15px; color: var(--muted); }
+  .status span { display: inline-flex; align-items: center; gap: 8px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--off); transition: background .3s; }
   .dot.ok { background: var(--ok); }
   .dot.bad { background: var(--danger); }
 
-  .conn {
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 10px 12px; margin-bottom: 16px; box-shadow: var(--shadow);
-  }
-  .conn label { font-size: 13px; color: var(--muted); }
-  .conn input { min-width: 0; }
-  input[type=text], input[type=number] {
-    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
-    border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 14px;
-  }
-  #brokerUrl { flex: 1 1 260px; }
-  #deviceId { flex: 0 1 170px; }
-  button {
-    font: inherit; font-size: 14px; border-radius: 8px; padding: 7px 14px; cursor: pointer;
-    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
-  }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-
+  /* ---------- alert: a whole field of colour ---------- */
   .alert-banner {
-    display: none; align-items: center; gap: 10px;
-    background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger);
-    border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-weight: 600;
+    display: none; align-items: center; gap: 14px;
+    background: var(--danger); color: var(--on-danger);
+    border-radius: 18px; padding: 18px 22px; margin-bottom: 16px;
+    font-size: 19px; font-weight: 600; letter-spacing: -0.01em;
   }
-  .alert-banner.show { display: flex; animation: pulse 1.2s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity: .65; } }
-  @media (prefers-reduced-motion: reduce) { .alert-banner.show { animation: none; } }
+  .alert-banner.show { display: flex; animation: arrive .45s var(--press) both; }
+  .alert-banner svg { flex: none; }
 
-  .grid { display: grid; gap: 14px; }
-  .metrics { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 14px; }
-  .card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    padding: 16px; box-shadow: var(--shadow); min-width: 0;
-  }
-  .card h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-  .value { font-size: 34px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-  .unit { font-size: 16px; color: var(--muted); font-weight: 500; margin-left: 3px; }
-  .hint { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
-  .bar { height: 5px; background: var(--surface-2); border-radius: 3px; margin-top: 10px; overflow: hidden; }
-  .bar > i { display: block; height: 100%; width: 0; border-radius: 3px; transition: width .4s; }
-  .m-temp .value { color: var(--temp); } .m-temp .bar > i { background: var(--temp); }
-  .m-hum  .value { color: var(--hum); }  .m-hum  .bar > i { background: var(--hum); }
-  .m-lux  .value { color: var(--lux); }  .m-lux  .bar > i { background: var(--lux); }
+  /* ---------- readings ---------- */
+  .readings { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); margin-bottom: 16px; }
+  .side { display: grid; gap: 16px; grid-template-rows: 1fr 1fr; }
+  .tile { background: var(--surface); border-radius: 22px; padding: 22px 24px; min-width: 0; }
+  .tile h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; color: var(--muted); letter-spacing: -0.01em; }
+  .value { font-weight: 700; letter-spacing: -0.045em; line-height: .95; font-variant-numeric: tabular-nums; }
+  .unit { font-weight: 600; color: var(--muted); margin-left: 4px; letter-spacing: -0.02em; }
+  .hero .value { font-size: clamp(88px, 13vw, 168px); color: var(--temp); }
+  .hero .unit { font-size: clamp(28px, 3.4vw, 44px); }
+  .side .value { font-size: clamp(48px, 6vw, 72px); }
+  .side .unit { font-size: 24px; }
+  .m-hum .value { color: var(--hum); }
+  .m-lux .value { color: var(--lux); }
+  .hero { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
+  .bar { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin-top: 14px; }
+  .bar > i { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .6s var(--press); }
+  .m-temp .bar > i { background: var(--temp); }
+  .m-hum .bar > i { background: var(--hum); }
+  .m-lux .bar > i { background: var(--lux); }
+  .hint { font-size: 15px; color: var(--muted); margin-top: 8px; }
 
-  .state { display: flex; align-items: center; gap: 10px; }
+  /* ---------- relays ---------- */
+  .relays { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
+  .relay { display: flex; align-items: center; gap: 18px; background: var(--surface); border-radius: 22px; padding: 18px 22px; transition: background .35s; }
+  .relay .txt { min-width: 0; }
+  .relay h2 { margin: 0; font-size: 17px; font-weight: 600; color: var(--muted); }
+  .relay .value { font-size: 40px; }
   .lamp {
-    width: 34px; height: 34px; border-radius: 50%; background: var(--surface-2);
-    border: 2px solid var(--border); display: grid; place-items: center; flex: none;
-    transition: background .25s, box-shadow .25s;
+    width: 64px; height: 64px; border-radius: 50%; background: var(--surface-2);
+    display: grid; place-items: center; flex: none; transition: background .35s, transform .35s var(--press);
   }
-  .lamp svg { width: 18px; height: 18px; stroke: var(--off); }
-  .lamp.on-fan { background: var(--hum); border-color: var(--hum); box-shadow: 0 0 14px var(--hum); }
-  .lamp.on-light { background: var(--lux); border-color: var(--lux); box-shadow: 0 0 14px var(--lux); }
+  .lamp svg { width: 30px; height: 30px; stroke: var(--muted); transition: stroke .35s; }
+  .lamp.on-fan { background: var(--hum); }
+  .lamp.on-light { background: var(--lux); }
   .lamp.on-fan svg, .lamp.on-light svg { stroke: #fff; }
-  .lamp.on-fan svg { animation: spin 1s linear infinite; }
+  .lamp.on-fan svg { animation: spin 1.1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce) { .lamp.on-fan svg { animation: none; } }
-  .state .value { font-size: 26px; }
 
-  .main { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-  @media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
-  .chart-box { position: relative; height: 320px; }
+  /* ---------- chart + control ---------- */
+  .main { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); }
+  .main > .tile { display: flex; flex-direction: column; }
+  .chart-box { position: relative; flex: 1; min-height: 340px; margin-top: 10px; }
+  .stack { display: grid; gap: 16px; align-content: start; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; }
+  .row + .row { margin-top: 2px; }
+  .lbl { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; }
+  .lbl small { display: block; color: var(--muted); font-size: 14px; font-weight: 400; }
 
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-  .row:last-child { border-bottom: 0; }
-  .row .lbl { font-size: 14px; }
-  .row .lbl small { display: block; color: var(--muted); font-size: 12px; }
-  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 2px; }
-  .seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 7px; font-size: 13px; }
-  .seg button.active { background: var(--accent); color: #fff; }
-  .switch { position: relative; width: 46px; height: 26px; flex: none; }
-  .switch input { opacity: 0; width: 0; height: 0; }
-  .switch span {
-    position: absolute; inset: 0; background: var(--off); border-radius: 26px; cursor: pointer; transition: background .2s;
+  button {
+    font: inherit; font-size: 15px; font-weight: 600; border: 0; border-radius: 999px;
+    padding: 9px 18px; cursor: pointer; background: var(--surface-2); color: var(--text);
+    transition: transform .12s var(--press), background .2s, color .2s;
   }
+  button:active { transform: scale(.96); }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); color: #fff; }
+  button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* Segmented control: the thumb slides, critically damped (no overshoot) */
+  .seg { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); border-radius: 999px; padding: 3px; }
+  .seg::before {
+    content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
+    background: var(--accent); border-radius: 999px; transition: transform .38s var(--press);
+  }
+  .seg.is-manual::before { transform: translateX(100%); }
+  .seg button { position: relative; background: transparent; padding: 7px 16px; font-size: 14px; color: var(--muted); }
+  .seg button.active { color: #fff; }
+
+  /* iOS-style switch */
+  .switch { position: relative; width: 52px; height: 32px; flex: none; }
+  .switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .switch span { position: absolute; inset: 0; background: var(--surface-2); border-radius: 32px; transition: background .25s; pointer-events: none; }
   .switch span::before {
-    content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px;
-    background: #fff; border-radius: 50%; transition: transform .2s;
+    content: ""; position: absolute; width: 26px; height: 26px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%; transition: transform .32s var(--press), width .15s;
   }
+  .switch input:active + span::before { width: 30px; }
   .switch input:checked + span { background: var(--ok); }
   .switch input:checked + span::before { transform: translateX(20px); }
-  .switch input:disabled + span { opacity: .45; cursor: not-allowed; }
-  .thr { display: flex; gap: 6px; align-items: center; }
-  .thr input { width: 82px; }
+  .switch input:checked:active + span::before { transform: translateX(16px); }
+  .switch input:disabled + span { opacity: .45; }
 
-  .log { margin-top: 14px; }
-  .log ul { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; font-size: 13px; }
-  .log li { display: grid; grid-template-columns: 70px 1fr; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  input[type=text], input[type=number] {
+    background: var(--surface-2); color: var(--text); border: 0; border-radius: 12px;
+    padding: 9px 12px; font: inherit; font-size: 15px; min-width: 0;
+  }
+  .thr { display: flex; gap: 8px; align-items: center; }
+  .thr input { width: 86px; font-variant-numeric: tabular-nums; }
+
+  /* ---------- events ---------- */
+  .log ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 250px; overflow-y: auto; }
+  .log li { display: grid; grid-template-columns: 74px 1fr; gap: 10px; padding: 7px 0; font-size: 15px; animation: arrive .35s var(--press) both; }
   .log li time { color: var(--muted); font-variant-numeric: tabular-nums; }
   .log li.alert { color: var(--danger); font-weight: 600; }
   .log li.good { color: var(--ok); }
-  .empty { color: var(--muted); font-size: 13px; }
-  footer { margin-top: 18px; color: var(--muted); font-size: 12px; text-align: center; }
+  .empty { color: var(--muted); }
+
+  /* ---------- connection (bottom, secondary) ---------- */
+  .conn { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 28px; color: var(--muted); font-size: 15px; }
+  #brokerUrl { flex: 1 1 280px; }
+  #deviceId { flex: 0 1 160px; }
+  footer { margin-top: 14px; color: var(--muted); font-size: 14px; }
+
+  /* entrance: parts rise in sequence, content never hidden without script */
+  @keyframes arrive { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  .rise { animation: arrive .6s var(--press) both; }
+  .rise:nth-child(2) { animation-delay: .07s; } .rise:nth-child(3) { animation-delay: .14s; }
+  .rise:nth-child(4) { animation-delay: .21s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition-duration: .01s !important; }
+  }
+  @media (max-width: 900px) {
+    .readings, .main { grid-template-columns: minmax(0, 1fr); }
+    .side { grid-template-columns: 1fr 1fr; grid-template-rows: none; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 20px 16px 40px; }
+    .side, .relays { grid-template-columns: minmax(0, 1fr); }
+    .chart-box { height: 260px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <div>
-      <h1>Smart Room Monitoring &amp; Automation</h1>
-      <div class="sub">ESP32 · DHT22 + LDR · Relays · MQTT</div>
-    </div>
-    <div class="pills">
-      <span class="pill"><span class="dot" id="brokerDot"></span><span id="brokerTxt">Broker: disconnected</span></span>
-      <span class="pill"><span class="dot" id="devDot"></span><span id="devTxt">Device: unknown</span></span>
-      <span class="pill" id="lastSeen">No data yet</span>
+    <h1>Smart Room</h1>
+    <div class="status">
+      <span><i class="dot" id="brokerDot"></i><span id="brokerTxt">Broker: disconnected</span></span>
+      <span><i class="dot" id="devDot"></i><span id="devTxt">Device: unknown</span></span>
+      <span id="lastSeen">No data yet</span>
     </div>
   </header>
 
-  <div class="conn">
-    <label for="brokerUrl">Broker</label>
-    <input id="brokerUrl" type="text" value="wss://broker.hivemq.com:8884/mqtt" spellcheck="false">
-    <label for="deviceId">Device ID</label>
-    <input id="deviceId" type="text" value="sachin-room1" spellcheck="false">
-    <button class="primary" id="connectBtn">Connect</button>
-  </div>
-
   <div class="alert-banner" id="alertBanner" role="alert">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg>
     <span id="alertTxt">High temperature alert</span>
   </div>
 
-  <section class="grid metrics">
-    <div class="card m-temp">
-      <h3>Temperature</h3>
+  <section class="readings">
+    <div class="tile hero m-temp rise">
+      <h2>Temperature</h2>
       <div><span class="value" id="vTemp">--</span><span class="unit">°C</span></div>
-      <div class="bar"><i id="bTemp"></i></div>
-      <div class="hint" id="hTemp">Fan threshold: --</div>
-    </div>
-    <div class="card m-hum">
-      <h3>Humidity</h3>
-      <div><span class="value" id="vHum">--</span><span class="unit">%</span></div>
-      <div class="bar"><i id="bHum"></i></div>
-      <div class="hint">Relative humidity</div>
-    </div>
-    <div class="card m-lux">
-      <h3>Light level</h3>
-      <div><span class="value" id="vLux">--</span><span class="unit">lx</span></div>
-      <div class="bar"><i id="bLux"></i></div>
-      <div class="hint" id="hLux">Light threshold: --</div>
-    </div>
-    <div class="card">
-      <h3>Fan (Relay 1)</h3>
-      <div class="state">
-        <div class="lamp" id="lampFan">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7s2 5-2 8"/><path d="M14 12c4 0 7 1 7 4s-5 2-8-2"/><path d="M12 14c0 4-1 7-4 7s-2-5 2-8"/><path d="M10 12c-4 0-7-1-7-4s5-2 8 2"/></svg>
-        </div>
-        <span class="value" id="vFan">--</span>
+      <div>
+        <div class="bar"><i id="bTemp"></i></div>
+        <div class="hint" id="hTemp">Fan threshold: --</div>
       </div>
-      <div class="hint" id="hMode1">Mode: --</div>
     </div>
-    <div class="card">
-      <h3>Light (Relay 2)</h3>
-      <div class="state">
-        <div class="lamp" id="lampLight">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg>
-        </div>
-        <span class="value" id="vLight">--</span>
+    <div class="side">
+      <div class="tile m-hum rise">
+        <h2>Humidity</h2>
+        <div><span class="value" id="vHum">--</span><span class="unit">%</span></div>
+        <div class="bar"><i id="bHum"></i></div>
       </div>
-      <div class="hint" id="hMode2">Mode: --</div>
+      <div class="tile m-lux rise">
+        <h2>Light</h2>
+        <div><span class="value" id="vLux">--</span><span class="unit">lx</span></div>
+        <div class="bar"><i id="bLux"></i></div>
+        <div class="hint" id="hLux">Light threshold: --</div>
+      </div>
     </div>
   </section>
 
-  <section class="grid main">
-    <div class="card">
-      <h3>Live trend</h3>
+  <section class="relays">
+    <div class="relay rise">
+      <div class="lamp" id="lampFan">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7s2 5-2 8"/><path d="M14 12c4 0 7 1 7 4s-5 2-8-2"/><path d="M12 14c0 4-1 7-4 7s-2-5 2-8"/><path d="M10 12c-4 0-7-1-7-4s5-2 8 2"/></svg>
+      </div>
+      <div class="txt"><h2>Fan</h2><span class="value" id="vFan">--</span><div class="hint" id="hMode1">Mode: --</div></div>
+    </div>
+    <div class="relay rise">
+      <div class="lamp" id="lampLight">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg>
+      </div>
+      <div class="txt"><h2>Light</h2><span class="value" id="vLight">--</span><div class="hint" id="hMode2">Mode: --</div></div>
+    </div>
+  </section>
+
+  <section class="main">
+    <div class="tile">
+      <h2>Last two minutes</h2>
       <div class="chart-box"><canvas id="chart"></canvas></div>
     </div>
 
-    <div>
-      <div class="card">
-        <h3>Control</h3>
+    <div class="stack">
+      <div class="tile">
+        <h2>Control</h2>
         <div class="row">
-          <div class="lbl">Mode<small>AUTO uses thresholds</small></div>
-          <div class="seg">
-            <button id="modeAuto">AUTO</button>
-            <button id="modeManual">MANUAL</button>
+          <div class="lbl">Mode<small>Auto follows the thresholds</small></div>
+          <div class="seg" id="seg">
+            <button id="modeAuto">Auto</button>
+            <button id="modeManual">Manual</button>
           </div>
         </div>
         <div class="row">
-          <div class="lbl">Fan<small>Manual override</small></div>
-          <label class="switch"><input type="checkbox" id="swFan"><span></span></label>
+          <div class="lbl">Fan<small>Manual mode only</small></div>
+          <label class="switch"><input type="checkbox" id="swFan" aria-label="Fan"><span></span></label>
         </div>
         <div class="row">
-          <div class="lbl">Light<small>Manual override</small></div>
-          <label class="switch"><input type="checkbox" id="swLight"><span></span></label>
+          <div class="lbl">Light<small>Manual mode only</small></div>
+          <label class="switch"><input type="checkbox" id="swLight" aria-label="Light"><span></span></label>
         </div>
         <div class="row">
-          <div class="lbl">Fan ON at<small>°C (off 1 °C below)</small></div>
-          <div class="thr"><input type="number" id="inThrTemp" step="0.5" min="0" max="80"><button id="setThrTemp">Set</button></div>
+          <div class="lbl">Fan on at<small>°C, off 1 °C below</small></div>
+          <div class="thr"><input type="number" id="inThrTemp" step="0.5" min="0" max="80" aria-label="Fan threshold"><button id="setThrTemp">Set</button></div>
         </div>
         <div class="row">
-          <div class="lbl">Light ON below<small>lux (off 50 lx above)</small></div>
-          <div class="thr"><input type="number" id="inThrLux" step="10" min="0" max="100000"><button id="setThrLux">Set</button></div>
+          <div class="lbl">Light on below<small>lux, off 50 lx above</small></div>
+          <div class="thr"><input type="number" id="inThrLux" step="10" min="0" max="100000" aria-label="Light threshold"><button id="setThrLux">Set</button></div>
         </div>
         <div class="row">
-          <div class="lbl">Alarm at<small>°C (buzzer + alert)</small></div>
-          <div class="thr"><input type="number" id="inAlertTemp" step="0.5" min="0" max="80"><button id="setAlertTemp">Set</button></div>
+          <div class="lbl">Alarm at<small>°C, buzzer and alert</small></div>
+          <div class="thr"><input type="number" id="inAlertTemp" step="0.5" min="0" max="80" aria-label="Alarm temperature"><button id="setAlertTemp">Set</button></div>
         </div>
       </div>
 
-      <div class="card log">
-        <h3>Events &amp; alerts</h3>
+      <div class="tile log">
+        <h2>Events</h2>
         <ul id="log"><li class="empty">No events yet.</li></ul>
       </div>
     </div>
   </section>
 
+  <div class="conn">
+    <label for="brokerUrl">Broker</label>
+    <input id="brokerUrl" type="text" value="wss://broker.hivemq.com:8884/mqtt" spellcheck="false">
+    <label for="deviceId">Device</label>
+    <input id="deviceId" type="text" value="sachin-room1" spellcheck="false">
+    <button class="primary" id="connectBtn">Connect</button>
+  </div>
   <footer id="topicInfo">Topics: iot-a3/&lt;device&gt;/telemetry · status · alert · cmd</footer>
 </div>
 
@@ -298,20 +321,20 @@
   const chart = new Chart($("chart"), {
     type: "line",
     data: { labels: [], datasets: [
-      { label: "Temperature (°C)", data: [], borderColor: css("--temp"), backgroundColor: css("--temp"), yAxisID: "y",  tension: .3, pointRadius: 0, borderWidth: 2 },
-      { label: "Humidity (%)",     data: [], borderColor: css("--hum"),  backgroundColor: css("--hum"),  yAxisID: "y",  tension: .3, pointRadius: 0, borderWidth: 2 },
-      { label: "Light (lx)",       data: [], borderColor: css("--lux"),  backgroundColor: css("--lux"),  yAxisID: "y1", tension: .3, pointRadius: 0, borderWidth: 2 }
+      { label: "Temperature (°C)", data: [], borderColor: css("--temp"), backgroundColor: css("--temp"), yAxisID: "y",  tension: .3, pointRadius: 0, borderWidth: 3 },
+      { label: "Humidity (%)",     data: [], borderColor: css("--hum"),  backgroundColor: css("--hum"),  yAxisID: "y",  tension: .3, pointRadius: 0, borderWidth: 3 },
+      { label: "Light (lx)",       data: [], borderColor: css("--lux"),  backgroundColor: css("--lux"),  yAxisID: "y1", tension: .3, pointRadius: 0, borderWidth: 3 }
     ]},
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       interaction: { mode: "index", intersect: false },
-      plugins: { legend: { labels: { color: css("--muted"), boxWidth: 12 } } },
+      plugins: { legend: { labels: { color: css("--muted"), boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: "circle", font: { size: 13 } } } },
       scales: {
-        x:  { ticks: { color: css("--muted"), maxTicksLimit: 6 }, grid: { color: css("--border") } },
+        x:  { ticks: { color: css("--muted"), maxTicksLimit: 6 }, grid: { display: false }, border: { display: false } },
         y:  { position: "left",  title: { display: true, text: "°C / %", color: css("--muted") },
-              ticks: { color: css("--muted") }, grid: { color: css("--border") } },
+              ticks: { color: css("--muted") }, grid: { display: false }, border: { display: false } },
         y1: { type: "logarithmic", position: "right", title: { display: true, text: "lux (log)", color: css("--muted") },
-              ticks: { color: css("--muted") }, grid: { drawOnChartArea: false } }
+              ticks: { color: css("--muted") }, grid: { display: false }, border: { display: false } }
       }
     }
   });
@@ -364,12 +387,13 @@
     $("vLight").textContent = s.light ? "ON" : "OFF";
     $("lampFan").className   = "lamp" + (s.fan ? " on-fan" : "");
     $("lampLight").className = "lamp" + (s.light ? " on-light" : "");
-    const modeTxt = "Mode: " + s.mode.toUpperCase();
+    const modeTxt = s.mode === "manual" ? "Manual control" : "Automatic";
     $("hMode1").textContent = modeTxt; $("hMode2").textContent = modeTxt;
 
     const manual = s.mode === "manual";
     $("modeAuto").classList.toggle("active", !manual);
     $("modeManual").classList.toggle("active", manual);
+    $("seg").classList.toggle("is-manual", manual);
     $("swFan").checked = !!s.fan;     $("swFan").disabled = !manual;
     $("swLight").checked = !!s.light; $("swLight").disabled = !manual;
 
@@ -379,7 +403,7 @@
     });
 
     $("alertBanner").classList.toggle("show", !!s.alert);
-    if (s.alert) $("alertTxt").textContent = `HIGH TEMPERATURE ALERT: ${hasT ? s.temp.toFixed(1) : "?"} °C (limit ${s.alertTemp} °C). Fan forced ON.`;
+    if (s.alert) $("alertTxt").textContent = `Too hot: ${hasT ? s.temp.toFixed(1) : "?"} °C, above the ${s.alertTemp} °C alarm. Fan forced on.`;
 
     // Log state transitions
     if (lastState) {
